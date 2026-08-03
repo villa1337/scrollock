@@ -1,114 +1,178 @@
-[![CodeQL](https://github.com/docloulou/Wayland-Wheeltani/actions/workflows/codeql.yml/badge.svg)](https://github.com/docloulou/Wayland-Wheeltani/actions/workflows/codeql.yml)
-[![License: 0BSD](https://img.shields.io/badge/license-0BSD-brightgreen.svg)](LICENSE)
+# Scrollock
 
-# Wayland-Wheeltani
+**Windows-style autoscroll for Linux/Wayland.** Double-click or hold your middle mouse button to lock scroll mode — move to scroll, click to stop. No holding required.
 
-Progressive middle-click autoscroll for Wayland.
+![Scrollock demo](demo.gif)
 
-Hold the middle mouse button, move vertically or horizontally, and
-Wayland-Wheeltani emits smooth wheel events through a virtual mouse. Release the
-middle button and scrolling stops immediately. A short middle click still
-behaves like a normal middle click.
+## Why Scrollock?
 
-```text
-hold middle button
-  ├─ tiny movement inside deadzone       -> normal middle click on release
-  ├─ move down from press position       -> continuous scroll down
-  ├─ move right from press position      -> continuous horizontal scroll right
-  ├─ move farther from press position    -> faster scroll
-  ├─ return near press position          -> scroll slows/stops
-  └─ cross the press position            -> scroll reverses on that axis
-```
+Every Linux-from-Windows switcher asks the same question: *"Where's my middle-click autoscroll?"*
 
-No GUI, no overlay, no network, no keyboard capture. The project is split into a
-portable, unit-tested Rust core and a Linux backend using `evdev` + `uinput`.
+The answer used to be "nowhere" — existing solutions are X11-only or require holding the button. Scrollock fixes that:
 
-## Features
+- **Toggle scroll mode** — double-click middle button or hold it ~140ms to lock. Move to scroll. Click anything to exit.
+- **Normal middle-click preserved** — quick clicks still close tabs, open links in new tabs, paste.
+- **System-wide** — works in every app (browsers, file managers, terminals, IDEs).
+- **Wayland-native** — evdev/uinput at kernel level. No X11 dependency.
+- **Visual indicator** — shows when scroll mode is active.
 
-| Feature | Details | Wiki |
-|---|---|---|
-| **Progressive autoscroll** | Speed follows the distance from the middle-button press point; a short click still behaves as a normal middle click | — |
-| **Stable device matching** | Matches your mouse by USB vendor/product id, so config survives reboots and USB port changes | [Configuration](https://github.com/docloulou/Wayland-Wheeltani/wiki/Configuration) |
-| **Runtime hot-reconnect** | Survives a live unplug/replug without restarting the daemon | [Configuration](https://github.com/docloulou/Wayland-Wheeltani/wiki/Configuration) |
-| **Per-application foreground filter** | Turn autoscroll on/off per focused app (denylist/allowlist); off by default | [Foreground filter](https://github.com/docloulou/Wayland-Wheeltani/wiki/Foreground-Filter) |
-| **Foreground providers** | Hyprland, Sway/i3, GNOME (bundled Shell extension), KDE Plasma (`kdotool`), or any custom command | [Foreground filter](https://github.com/docloulou/Wayland-Wheeltani/wiki/Foreground-Filter) · [GNOME setup](https://github.com/docloulou/Wayland-Wheeltani/wiki/GNOME-Setup) · [KDE setup](https://github.com/docloulou/Wayland-Wheeltani/wiki/KDE-Setup) |
-| **`--detect-foreground` helper** | Prints the exact identifier to use in `deny_apps`/`allow_apps` | [Foreground filter](https://github.com/docloulou/Wayland-Wheeltani/wiki/Foreground-Filter) |
-| **`systemd --user` service** | Install, start, stop, and restart the daemon as a user service | [Installation](https://github.com/docloulou/Wayland-Wheeltani/wiki/Installation) |
-| **Root-free daily use** | Generates a targeted udev rule for your mouse and `/dev/uinput` | [Installation](https://github.com/docloulou/Wayland-Wheeltani/wiki/Installation) · [Troubleshooting](https://github.com/docloulou/Wayland-Wheeltani/wiki/Troubleshooting) |
-| **`wlw` short CLI alias** | Same binary as `wayland-wheeltani`, shorter to type | [Installation](https://github.com/docloulou/Wayland-Wheeltani/wiki/Installation) |
-| **Dry-run & verbose logging** | `--dry-run` and `-v`/`-vv` to debug without touching the virtual mouse | [Configuration](https://github.com/docloulou/Wayland-Wheeltani/wiki/Configuration) |
+## Install
 
-## Quick start
-
-Requirements: a Linux Wayland session, a mouse on `/dev/input/eventX`,
-`/dev/uinput` available (`sudo modprobe uinput`), and `systemd --user`.
+One command:
 
 ```bash
-cargo install wayland-wheeltani
-
-# First-time setup: write a udev rule (so the daemon needs no root for daily
-# use), then install and start the systemd --user service.
-sudo "$HOME/.cargo/bin/wayland-wheeltani" --setup --install-udev-rule
-sudo udevadm control --reload-rules
-wayland-wheeltani --install-service
+curl -sSf https://raw.githubusercontent.com/villa1337/scrollock/main/install.sh | bash
 ```
 
-`cargo install` also installs `wlw` as a short alias for the exact same
-binary — `wlw --start`, `wlw --setup`, etc. all work identically to
-`wayland-wheeltani`.
+This builds from source, sets up permissions, detects your mouse, and starts the service. **No relogin required.**
 
-Manage the service:
+### Requirements
 
-```bash
-wayland-wheeltani --start | --stop | --restart
-journalctl --user -u wayland-wheeltani -f
-```
+- Linux with Wayland (GNOME, Hyprland, Sway, KDE Plasma)
+- Rust toolchain (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
+- systemd (for the user service)
+- A mouse with a middle button
 
-Full install options (release archives, building from source, cross-compiling,
-uninstall) are in the **[Installation](https://github.com/docloulou/Wayland-Wheeltani/wiki/Installation)**
-guide.
+## How It Works
 
-## Per-application on/off (foreground filter)
+| Action | Result |
+|--------|--------|
+| Quick middle-click | Normal click (close tab, paste, open in new tab) |
+| Double middle-click | **Enter scroll mode** (locked) |
+| Hold middle button ~140ms | **Enter scroll mode** (locked) |
+| Hold + move past deadzone | Scroll while holding (classic behavior) |
+| Move mouse while in scroll mode | Page scrolls (speed follows distance) |
+| Any click while in scroll mode | **Exit scroll mode** |
 
-Optionally keep the native middle-click in some apps (a browser, a game) while
-keeping autoscroll everywhere else — disabled by default:
+Three ways to enter scroll mode, all natural:
+1. **Double-click** — fast tap-tap on the middle button
+2. **Hold** — press and hold for a beat (140ms)
+3. **Hold + move** — press and drag past the deadzone (instant, like classic autoscroll)
+
+## Configuration
+
+Config file: `~/.config/scrollock/config.toml`
 
 ```toml
-[foreground]
-enabled = true
-provider = "auto"          # auto | none | hyprland | sway | gnome | kde | command
-mode = "denylist"
-deny_apps = ["firefox", "steam"]
+# Mode: "toggle" (default) or "hold_progressive" (classic hold-to-scroll)
+mode = "toggle"
+
+# Time window for double-click detection and hold threshold (ms)
+# Lower = snappier single-clicks but tighter double-click window
+hold_threshold_ms = 140
+
+# Pixels of movement before scroll activates (when holding)
+deadzone_units = 10
+
+# Speed curve
+acceleration_exponent = 1.6
+# min/max scroll speed (detents per second)
+# min_speed_detents_per_second = 1.5
+# max_speed_detents_per_second = 32.0
+
+# Scroll direction
+invert_vertical = false
+invert_horizontal = false
+
+# Enable horizontal scrolling (move mouse left/right)
+horizontal_scroll = true
+
+[device_match]
+vendor_id = "046d"
+product_id = "c07d"
+name = "Logitech Gaming Mouse G502"
 ```
 
-Run `wayland-wheeltani --detect-foreground` to print the exact identifier of any
-window. GNOME needs a small bundled Shell extension; KDE needs the `kdotool`
-helper. See the
-**[Foreground filter](https://github.com/docloulou/Wayland-Wheeltani/wiki/Foreground-Filter)**,
-**[GNOME setup](https://github.com/docloulou/Wayland-Wheeltani/wiki/GNOME-Setup)**
-and **[KDE setup](https://github.com/docloulou/Wayland-Wheeltani/wiki/KDE-Setup)**
-guides.
+After editing, restart: `scrollock --restart` (or `slk --restart`)
 
-## Documentation
+## Commands
 
-Full docs live in the **[GitHub wiki](https://github.com/docloulou/Wayland-Wheeltani/wiki)**:
+```bash
+scrollock --start          # Start the daemon
+scrollock --stop           # Stop the daemon
+scrollock --restart        # Restart (pick up config changes)
+scrollock --list-devices   # List detected mice
+scrollock --setup          # Interactive mouse detection + config write
 
-- [Installation](https://github.com/docloulou/Wayland-Wheeltani/wiki/Installation)
-- [Configuration](https://github.com/docloulou/Wayland-Wheeltani/wiki/Configuration)
-  (config file, CLI reference, stable device matching, scroll tuning)
-- [Foreground filter](https://github.com/docloulou/Wayland-Wheeltani/wiki/Foreground-Filter)
-- [GNOME setup](https://github.com/docloulou/Wayland-Wheeltani/wiki/GNOME-Setup)
-- [KDE setup](https://github.com/docloulou/Wayland-Wheeltani/wiki/KDE-Setup)
-- [Troubleshooting](https://github.com/docloulou/Wayland-Wheeltani/wiki/Troubleshooting)
-- [Development](https://github.com/docloulou/Wayland-Wheeltani/wiki/Development)
+slk --start               # Short alias for all commands
+```
 
-See [`examples/config.toml`](examples/config.toml) for every tunable option and
-[`CHANGELOG.md`](CHANGELOG.md) for release notes.
+## Modes
 
-> The wiki pages are maintained in [`wiki/`](wiki/) and published with
-> `scripts/publish-wiki.sh`.
+### Toggle (default)
+- Double-click or hold to **lock** scroll mode
+- Release doesn't exit — you scroll freely hands-off
+- Any click exits
+
+### Hold Progressive (classic)
+- Hold middle button + move to scroll
+- Release exits immediately
+- Set with `mode = "hold_progressive"` in config
+
+## Uninstall
+
+```bash
+curl -sSf https://raw.githubusercontent.com/villa1337/scrollock/main/uninstall.sh | bash
+```
+
+Or manually:
+```bash
+scrollock --stop
+scrollock --remove-service
+rm -f ~/.cargo/bin/scrollock ~/.cargo/bin/slk
+rm -rf ~/.config/scrollock
+rm -f ~/.local/bin/scrollock-indicator
+sudo rm -f /etc/udev/rules.d/60-scrollock.rules
+```
+
+## Troubleshooting
+
+**Mouse not detected:**
+```bash
+scrollock --list-devices   # Find your mouse
+# Edit ~/.config/scrollock/config.toml with the correct vendor_id/product_id
+scrollock --restart
+```
+
+**Permission denied:**
+```bash
+# Quick fix (immediate, no relogin):
+sudo setfacl -m "u:$USER:rw" /dev/input/eventX   # replace X with your mouse
+sudo setfacl -m "m::rw" /dev/input/eventX
+sudo setfacl -m "u:$USER:rw" /dev/uinput
+
+# Permanent fix:
+sudo usermod -aG input $USER
+# Then relogin
+```
+
+**Service won't start:**
+```bash
+journalctl --user -u scrollock -f   # Check logs
+scrollock --dry-run -vv             # Test without grabbing mouse
+```
+
+## How It's Built
+
+Scrollock is a fork of [Wayland-Wheeltani](https://github.com/docloulou/Wayland-Wheeltani) with major additions:
+
+- Platform-agnostic core engine (`scrollock-core`) with full test coverage
+- Linux daemon (`scrollock`) using evdev for input capture and uinput for synthetic events
+- The daemon exclusively grabs your physical mouse, creates a virtual mouse, and passes all events through transparently — except middle-button gestures which it intercepts for scroll control
+
+```
+Physical Mouse → [evdev grab] → Scrollock Engine → [uinput] → Virtual Mouse → Compositor
+                                      ↓
+                              Scroll wheel events
+                              (when in scroll mode)
+```
+
+## Support
+
+If Scrollock saved you from missing Windows autoscroll, consider buying me a coffee:
+
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?logo=paypal)](https://paypal.me/villa1337)
 
 ## License
 
-Released under the [BSD Zero Clause License](LICENSE) (0BSD) — do whatever you
-want with it, no attribution required.
+[BSD Zero Clause](LICENSE) — do whatever you want, no attribution required.
