@@ -2,11 +2,11 @@ use std::io;
 
 use evdev::uinput::VirtualDevice;
 use evdev::{AttributeSet, BusType, EventType, InputEvent, InputId, KeyCode, RelativeAxisCode};
-use middle_scroll_core::{CoreAction, MouseButton};
+use scrollock_core::{CoreAction, MouseButton};
 
 use crate::errors::DaemonError;
 
-pub const VIRTUAL_MOUSE_NAME: &str = "Wayland-Wheeltani virtual mouse";
+pub const VIRTUAL_MOUSE_NAME: &str = "Scrollock virtual mouse";
 
 const VENDOR_ID: u16 = 0x1209;
 const PRODUCT_ID: u16 = 0x7771;

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Mode {
     #[default]
+    Toggle,
     HoldProgressive,
 }
 
@@ -25,6 +26,11 @@ pub struct SpeedStep {
 #[allow(clippy::struct_excessive_bools)]
 pub struct CoreConfig {
     pub mode: Mode,
+
+    /// Time (ms) the middle button must be held before entering scroll mode.
+    /// Release before this threshold = normal middle click.
+    /// Only used in Toggle mode. 0 = enter on release (original behavior).
+    pub hold_threshold_ms: u64,
 
     pub deadzone_units: i32,
     pub full_speed_units: i32,
@@ -55,7 +61,9 @@ pub struct CoreConfig {
 impl Default for CoreConfig {
     fn default() -> Self {
         Self {
-            mode: Mode::HoldProgressive,
+            mode: Mode::default(),
+
+            hold_threshold_ms: 200,
 
             deadzone_units: 10,
             full_speed_units: 120,

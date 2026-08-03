@@ -8,7 +8,7 @@ use nix::unistd::Uid;
 use crate::cli::Args;
 use crate::config_loader;
 
-pub const SERVICE_NAME: &str = "wayland-wheeltani.service";
+pub const SERVICE_NAME: &str = "scrollock.service";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ServiceAction {
@@ -138,7 +138,7 @@ fn render_user_service(exe: &Path, config_path: &Path) -> anyhow::Result<String>
     Ok(format!(
         "[Unit]\n\
 Description=Progressive middle-button autoscroll daemon for Wayland\n\
-Documentation=https://github.com/docloulou/Wayland-Wheeltani\n\
+Documentation=https://github.com/docloulou/Scrollock\n\
 After=graphical-session.target\n\
 PartOf=graphical-session.target\n\
 \n\
@@ -192,13 +192,13 @@ mod tests {
     #[test]
     fn service_unit_uses_current_binary_and_config() {
         let unit = render_user_service(
-            Path::new("/home/me/.cargo/bin/wayland-wheeltani"),
-            Path::new("/home/me/.config/Wayland-Wheeltani/config.toml"),
+            Path::new("/home/me/.cargo/bin/scrollock"),
+            Path::new("/home/me/.config/Scrollock/config.toml"),
         )
         .unwrap();
 
         assert!(unit.contains(
-            "ExecStart=/home/me/.cargo/bin/wayland-wheeltani --no-interactive --config /home/me/.config/Wayland-Wheeltani/config.toml"
+            "ExecStart=/home/me/.cargo/bin/scrollock --no-interactive --config /home/me/.config/Scrollock/config.toml"
         ));
         assert!(unit.contains("Restart=on-failure"));
         assert!(unit.contains("WantedBy=default.target"));
@@ -207,13 +207,13 @@ mod tests {
     #[test]
     fn service_unit_quotes_paths_with_spaces() {
         let unit = render_user_service(
-            Path::new("/home/me/bin with spaces/wayland-wheeltani"),
+            Path::new("/home/me/bin with spaces/scrollock"),
             Path::new("/home/me/config with spaces/config.toml"),
         )
         .unwrap();
 
         assert!(unit.contains(
-            "ExecStart=\"/home/me/bin with spaces/wayland-wheeltani\" --no-interactive --config \"/home/me/config with spaces/config.toml\""
+            "ExecStart=\"/home/me/bin with spaces/scrollock\" --no-interactive --config \"/home/me/config with spaces/config.toml\""
         ));
         assert!(unit.contains("ReadWritePaths=\"/home/me/config with spaces\""));
     }

@@ -91,7 +91,7 @@ impl SwayProvider {
         }));
         let shared_bg = shared.clone();
         let spawned = thread::Builder::new()
-            .name("wheeltani-fg-sway".to_owned())
+            .name("scrollock-fg-sway".to_owned())
             .spawn(move || event_loop(&shared_bg));
         if let Err(err) = spawned {
             store(

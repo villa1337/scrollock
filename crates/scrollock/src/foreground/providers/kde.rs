@@ -92,7 +92,7 @@ impl KdeProvider {
         let bg = shared.clone();
         let refresh = Duration::from_millis(refresh_ms).max(MIN_REFRESH);
         let spawned = thread::Builder::new()
-            .name("wheeltani-fg-kde".to_owned())
+            .name("scrollock-fg-kde".to_owned())
             .spawn(move || poll_loop(refresh, &bg));
         if let Err(err) = spawned {
             store(

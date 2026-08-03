@@ -110,7 +110,7 @@ pub struct Args {
             "no_grab",
             "safety_timeout_seconds"
         ],
-        help = "Remove the installed Wayland-Wheeltani udev rule; run with sudo"
+        help = "Remove the installed Scrollock udev rule; run with sudo"
     )]
     pub remove_udev_rule: bool,
 
@@ -236,9 +236,9 @@ impl Args {
 
     pub const fn log_directive(&self) -> &'static str {
         match self.verbose {
-            0 => "wayland_wheeltani=info,middle_scroll_core=warn",
-            1 => "wayland_wheeltani=debug,middle_scroll_core=info",
-            _ => "wayland_wheeltani=trace,middle_scroll_core=trace",
+            0 => "scrollock=info,scrollock_core=warn",
+            1 => "scrollock=debug,scrollock_core=info",
+            _ => "scrollock=trace,scrollock_core=trace",
         }
     }
 }

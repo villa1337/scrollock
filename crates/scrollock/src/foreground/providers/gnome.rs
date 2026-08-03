@@ -113,14 +113,14 @@ impl GnomeProvider {
         // Push path: low-latency updates from the extension's signal.
         let push = shared.clone();
         thread::Builder::new()
-            .name("wheeltani-fg-gnome-mon".to_owned())
+            .name("scrollock-fg-gnome-mon".to_owned())
             .spawn(move || monitor_loop(&push))
             .ok();
 
         // Resync path: authoritative state + extension liveness.
         let poll = shared.clone();
         thread::Builder::new()
-            .name("wheeltani-fg-gnome-poll".to_owned())
+            .name("scrollock-fg-gnome-poll".to_owned())
             .spawn(move || resync_loop(&poll))
             .ok();
 

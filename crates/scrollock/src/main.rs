@@ -1,7 +1,7 @@
 #[cfg(not(target_os = "linux"))]
 fn main() -> anyhow::Result<()> {
     eprintln!(
-        "wayland-wheeltani: this binary only runs on Linux (evdev/uinput).\n\
+        "scrollock: this binary only runs on Linux (evdev/uinput).\n\
          Cross-compile or build inside an Ubuntu VM."
     );
     std::process::exit(2);
@@ -44,7 +44,7 @@ mod linux {
     use std::time::{Duration, Instant};
 
     use anyhow::Context;
-    use middle_scroll_core::{CoreAction, CoreInputEvent, Engine, EngineState};
+    use scrollock_core::{CoreAction, CoreInputEvent, Engine, EngineState};
     use nix::poll::{PollFd, PollFlags, PollTimeout};
     use tracing::{debug, error, info, warn};
     use tracing_subscriber::EnvFilter;
@@ -55,7 +55,7 @@ mod linux {
     use crate::errors::DaemonError;
     use crate::event_router::{self, RoutedEvent};
     use crate::foreground::{AutoscrollDecision, ForegroundGate};
-    use crate::indicator::{Indicator, NoopIndicator};
+    use crate::indicator::{Indicator, OverlayIndicator};
     use crate::physical_mouse::PhysicalMouse;
     use crate::service;
     use crate::udev_rule;
@@ -238,7 +238,7 @@ mod linux {
         if let Some(device) = resolved.device.clone() {
             warn!(
                 device = %device.display(),
-                "config uses legacy `device =` which is not stable across reboots; re-run `wayland-wheeltani --setup` to migrate to `[device_match]`"
+                "config uses legacy `device =` which is not stable across reboots; re-run `scrollock --setup` to migrate to `[device_match]`"
             );
             return Ok(device);
         }
@@ -316,7 +316,7 @@ mod linux {
                     usb_id = %id,
                     event = %found.path.display(),
                     found_phys = ?found.phys,
-                    "mouse found on a different USB port than the one pinned in config; matching by USB id instead (re-run `wayland-wheeltani --setup` to clear the pinned port)"
+                    "mouse found on a different USB port than the one pinned in config; matching by USB id instead (re-run `scrollock --setup` to clear the pinned port)"
                 );
                 return Some(found.path);
             }
@@ -494,7 +494,7 @@ mod linux {
         );
 
         let shutdown = install_signal_handler()?;
-        let mut indicator = NoopIndicator;
+        let mut indicator = OverlayIndicator::new();
 
         // The virtual mouse is created once and kept alive across physical
         // reconnections, so the compositor never sees it disappear.
@@ -900,7 +900,7 @@ mod linux {
 
         fn resolved_with_match(device_match: Option<ParsedDeviceMatch>) -> ResolvedConfig {
             ResolvedConfig {
-                core: middle_scroll_core::CoreConfig::default(),
+                core: scrollock_core::CoreConfig::default(),
                 device: None,
                 device_match,
                 grab: true,

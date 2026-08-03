@@ -1,5 +1,5 @@
 use evdev::{EventSummary, InputEvent, KeyCode, RelativeAxisCode};
-use middle_scroll_core::{CoreAction, CoreInputEvent, MouseButton};
+use scrollock_core::{CoreAction, CoreInputEvent, MouseButton};
 
 #[derive(Debug)]
 pub enum RoutedEvent {
@@ -184,7 +184,7 @@ const fn sign(v: i32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{passthrough_actions, RoutedEvent};
-    use middle_scroll_core::{CoreAction, CoreInputEvent, MouseButton};
+    use scrollock_core::{CoreAction, CoreInputEvent, MouseButton};
 
     #[test]
     fn middledown_forwards_middle_press() {

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use directories::ProjectDirs;
-use middle_scroll_core::CoreConfig;
+use scrollock_core::CoreConfig;
 use nix::unistd::{chown, Gid, Uid, User};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
@@ -121,7 +121,8 @@ fn parse_hex_id(raw: &str) -> Option<u16> {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CoreFileConfig {
-    pub mode: Option<middle_scroll_core::Mode>,
+    pub mode: Option<scrollock_core::Mode>,
+    pub hold_threshold_ms: Option<u64>,
 
     pub deadzone_units: Option<i32>,
     pub full_speed_units: Option<i32>,
@@ -130,7 +131,7 @@ pub struct CoreFileConfig {
     pub min_speed_detents_per_second: Option<f64>,
     pub max_speed_detents_per_second: Option<f64>,
     pub acceleration_exponent: Option<f64>,
-    pub scroll_speed_steps: Option<Vec<middle_scroll_core::SpeedStep>>,
+    pub scroll_speed_steps: Option<Vec<scrollock_core::SpeedStep>>,
 
     pub tick_hz: Option<u32>,
 
@@ -154,6 +155,9 @@ impl CoreFileConfig {
     pub fn into_core(self, mut base: CoreConfig) -> CoreConfig {
         if let Some(v) = self.mode {
             base.mode = v;
+        }
+        if let Some(v) = self.hold_threshold_ms {
+            base.hold_threshold_ms = v;
         }
         if let Some(v) = self.deadzone_units {
             base.deadzone_units = v;
@@ -226,9 +230,9 @@ pub struct ResolvedConfig {
 
 /// XDG-compliant config directory name. Lowercase by convention (and because
 /// `directories` 5.x silently lowercases application names on Linux anyway).
-pub const APP_DIR: &str = "wayland-wheeltani";
+pub const APP_DIR: &str = "scrollock";
 /// Pre-1.1.3 capitalised directory, kept for one-shot migration.
-const LEGACY_APP_DIR: &str = "Wayland-Wheeltani";
+const LEGACY_APP_DIR: &str = "Scrollock";
 
 pub fn default_config_path() -> Option<PathBuf> {
     ProjectDirs::from("", "", APP_DIR).map(|p| p.config_dir().join("config.toml"))
@@ -242,7 +246,7 @@ pub fn effective_config_path(args: &Args) -> Option<PathBuf> {
         .map(migrate_legacy_path)
 }
 
-/// If only the legacy `~/.config/Wayland-Wheeltani/` exists, use that path as
+/// If only the legacy `~/.config/Scrollock/` exists, use that path as
 /// fallback so existing users do not silently lose their config. The next
 /// `save_device_to_config` call writes to the new location and warns about
 /// the duplicate.
@@ -256,7 +260,7 @@ fn migrate_legacy_path(preferred: PathBuf) -> PathBuf {
         warn!(
             preferred = %preferred.display(),
             legacy = %legacy.display(),
-            "loading config from legacy capitalised directory; re-run `wayland-wheeltani --setup` to migrate"
+            "loading config from legacy capitalised directory; re-run `scrollock --setup` to migrate"
         );
         return legacy;
     }
@@ -562,14 +566,14 @@ mod tests {
             .unwrap()
             .as_nanos();
         std::env::temp_dir()
-            .join(format!("wayland-wheeltani-{name}-{nonce}"))
+            .join(format!("scrollock-{name}-{nonce}"))
             .join("config.toml")
     }
 
     /// Path very unlikely to exist on any real Linux host, so `probe()` will
     /// always return `None` and `save_device_to_config` will fall back to the
     /// legacy `device = "..."` form (which is what the next two tests assert).
-    const BOGUS_DEVICE: &str = "/dev/input/event-wheeltani-test-bogus";
+    const BOGUS_DEVICE: &str = "/dev/input/event-scrollock-test-bogus";
 
     fn synthetic_device() -> DeviceInfo {
         DeviceInfo {
@@ -750,11 +754,11 @@ mod tests {
 
     #[test]
     fn legacy_sibling_swaps_directory_case() {
-        let preferred = PathBuf::from("/home/user/.config/wayland-wheeltani/config.toml");
+        let preferred = PathBuf::from("/home/user/.config/scrollock/config.toml");
         let legacy = legacy_sibling(&preferred).unwrap();
         assert_eq!(
             legacy,
-            PathBuf::from("/home/user/.config/Wayland-Wheeltani/config.toml")
+            PathBuf::from("/home/user/.config/Scrollock/config.toml")
         );
     }
 
@@ -767,7 +771,7 @@ mod tests {
     #[test]
     fn migrate_legacy_path_prefers_existing_legacy_when_new_missing() {
         let base = std::env::temp_dir().join(format!(
-            "wheeltani-migrate-{}",
+            "scrollock-migrate-{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -787,7 +791,7 @@ mod tests {
     #[test]
     fn migrate_legacy_path_keeps_preferred_when_new_exists() {
         let base = std::env::temp_dir().join(format!(
-            "wheeltani-keep-new-{}",
+            "scrollock-keep-new-{}",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()

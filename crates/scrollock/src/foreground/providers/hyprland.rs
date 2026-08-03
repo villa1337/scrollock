@@ -100,7 +100,7 @@ impl HyprlandProvider {
         }));
         let shared_bg = shared.clone();
         let spawned = thread::Builder::new()
-            .name("wheeltani-fg-hyprland".to_owned())
+            .name("scrollock-fg-hyprland".to_owned())
             .spawn(move || event_loop(&shared_bg));
         if let Err(err) = spawned {
             store(

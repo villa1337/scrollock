@@ -1,28 +1,28 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/middle-scroll-core",
-    "crates/middle-scroll-linux",
+    "crates/scrollock-core",
+    "crates/scrollock",
 ]
 
 # On non-Linux hosts (e.g. macOS dev machines) `cargo test` / `cargo check`
 # from the workspace root only build the cross-platform core. The Linux
 # backend can still be built explicitly with:
 #
-#     cargo check -p wayland-wheeltani --target x86_64-unknown-linux-gnu
+#     cargo check -p scrollock --target x86_64-unknown-linux-gnu
 #
 # or natively from inside an Ubuntu VM with:
 #
-#     cargo build -p wayland-wheeltani
-default-members = ["crates/middle-scroll-core"]
+#     cargo build -p scrollock
+default-members = ["crates/scrollock-core"]
 
 [workspace.package]
-version = "1.3.2"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.74"
 license = "0BSD"
-repository = "https://github.com/docloulou/Wayland-Wheeltani"
-description = "Progressive middle-button autoscroll daemon for Wayland (evdev/uinput)."
+repository = "https://github.com/villa1337/scrollock"
+description = "Windows-style toggle autoscroll for Wayland. Double-click or hold middle button to lock scroll mode."
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

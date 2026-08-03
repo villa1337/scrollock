@@ -1,4 +1,4 @@
-//! Cross-platform core for the Wayland-Wheeltani daemon.
+//! Cross-platform core for the Scrollock daemon.
 //!
 //! This crate is intentionally free of any Linux input dependency (no `evdev`,
 //! no `uinput`, no `libc`). It exposes:

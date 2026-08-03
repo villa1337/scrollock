@@ -1,21 +1,20 @@
 [package]
-name = "wayland-wheeltani"
+name = "scrollock"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Installable Wayland-Wheeltani CLI daemon for Linux/Wayland (evdev + uinput)."
+description = "Windows-style toggle autoscroll for Linux/Wayland. Double-click or hold to lock scroll mode."
 readme = "../../README.md"
 
 [[bin]]
-name = "wayland-wheeltani"
+name = "scrollock"
 path = "src/main.rs"
 
-# Short alias for the same daemon/CLI, installed alongside the full name by
-# `cargo install`/`cargo build` (see src/cli.rs for the dynamic --help name).
+# Short alias
 [[bin]]
-name = "wlw"
+name = "slk"
 path = "src/main.rs"
 
 [lints.rust]
@@ -36,7 +35,7 @@ cast_possible_wrap = "allow"
 similar_names = "allow"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-middle-scroll-core = { version = "1.3.2", path = "../middle-scroll-core" }
+scrollock-core = { version = "2.0.0", path = "../scrollock-core" }
 evdev = { workspace = true }
 clap = { workspace = true }
 serde = { workspace = true }

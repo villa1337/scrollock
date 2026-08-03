@@ -9,7 +9,7 @@ pub enum DaemonError {
     #[error("no mouse-like input devices found under /dev/input")]
     NoMiceFound,
 
-    #[error("multiple mouse-like devices found; run `wayland-wheeltani --setup` or pass --device")]
+    #[error("multiple mouse-like devices found; run `scrollock --setup` or pass --device")]
     NonInteractiveDeviceChoice,
 
     #[error("device path does not exist: {0}")]
@@ -17,7 +17,7 @@ pub enum DaemonError {
 
     #[error(
         "no plugged mouse matches device_match (vendor={vendor_id:04x}, product={product_id:04x}); \
-         is the mouse plugged in? Run `wayland-wheeltani --list-devices` to verify."
+         is the mouse plugged in? Run `scrollock --list-devices` to verify."
     )]
     DeviceMatchNotFound { vendor_id: u16, product_id: u16 },
 
@@ -90,5 +90,5 @@ pub enum DaemonError {
     },
 
     #[error("invalid config: {0}")]
-    ConfigInvalid(#[from] middle_scroll_core::ConfigError),
+    ConfigInvalid(#[from] scrollock_core::ConfigError),
 }

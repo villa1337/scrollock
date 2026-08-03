@@ -323,15 +323,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
-name = "middle-scroll-core"
-version = "1.3.2"
-dependencies = [
- "approx",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -463,6 +454,34 @@ name = "regex-syntax"
 version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
+
+[[package]]
+name = "scrollock"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "ctrlc",
+ "directories",
+ "evdev",
+ "nix 0.29.0",
+ "scrollock-core",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "scrollock-core"
+version = "2.0.0"
+dependencies = [
+ "approx",
+ "serde",
+ "thiserror",
+]
 
 [[package]]
 name = "serde"
@@ -708,25 +727,6 @@ name = "wasi"
 version = "0.11.1+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
-
-[[package]]
-name = "wayland-wheeltani"
-version = "1.3.2"
-dependencies = [
- "anyhow",
- "clap",
- "ctrlc",
- "directories",
- "evdev",
- "middle-scroll-core",
- "nix 0.29.0",
- "serde",
- "serde_json",
- "thiserror",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
 
 [[package]]
 name = "windows-link"

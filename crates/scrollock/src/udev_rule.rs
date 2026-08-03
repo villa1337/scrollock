@@ -5,7 +5,7 @@ use std::process::Command;
 use anyhow::{bail, Context};
 use nix::unistd::Uid;
 
-pub const UDEV_RULE_PATH: &str = "/etc/udev/rules.d/60-wayland-wheeltani.rules";
+pub const UDEV_RULE_PATH: &str = "/etc/udev/rules.d/60-scrollock.rules";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DeviceIds {
@@ -66,7 +66,7 @@ fn read_device_ids(device_path: &Path) -> anyhow::Result<DeviceIds> {
     let raw = String::from_utf8(output.stdout).context("udevadm output was not valid UTF-8")?;
     parse_device_ids(&raw).with_context(|| {
         format!(
-            "failed to find ID_VENDOR_ID and ID_MODEL_ID for {}; use a USB mouse or install contrib/60-wayland-wheeltani.rules manually",
+            "failed to find ID_VENDOR_ID and ID_MODEL_ID for {}; use a USB mouse or install contrib/60-scrollock.rules manually",
             device_path.display()
         )
     })
@@ -93,13 +93,13 @@ fn normalize_hex_id(raw: &str) -> Option<String> {
 
 fn render_rule(ids: &DeviceIds) -> String {
     format!(
-        "ACTION!=\"add|change\", GOTO=\"wayland_wheeltani_end\"\n\
+        "ACTION!=\"add|change\", GOTO=\"scrollock_end\"\n\
 \n\
 KERNEL==\"uinput\", SUBSYSTEM==\"misc\", TAG+=\"uaccess\", OPTIONS+=\"static_node=uinput\"\n\
 \n\
 KERNEL==\"event[0-9]*\", SUBSYSTEM==\"input\", ENV{{ID_VENDOR_ID}}==\"{}\", ENV{{ID_MODEL_ID}}==\"{}\", MODE=\"0600\", TAG+=\"uaccess\"\n\
 \n\
-LABEL=\"wayland_wheeltani_end\"\n",
+LABEL=\"scrollock_end\"\n",
         ids.vendor, ids.product
     )
 }
@@ -178,7 +178,7 @@ mod tests {
             vendor: "1234".to_owned(),
             product: "abcd".to_owned(),
         });
-        assert!(rule.contains("GOTO=\"wayland_wheeltani_end\""));
-        assert!(rule.contains("LABEL=\"wayland_wheeltani_end\""));
+        assert!(rule.contains("GOTO=\"scrollock_end\""));
+        assert!(rule.contains("LABEL=\"scrollock_end\""));
     }
 }

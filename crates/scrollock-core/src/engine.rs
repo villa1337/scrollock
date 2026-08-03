@@ -1,4 +1,4 @@
-use crate::config::CoreConfig;
+use crate::config::{CoreConfig, Mode};
 use crate::model::{CoreAction, CoreInputEvent, EngineState, MouseButton};
 
 #[derive(Debug)]
@@ -16,6 +16,14 @@ pub struct Engine {
     /// `replay_pending_motion_on_click` is set. Kept as a compact sum (not a
     /// list of events) so a long press can never grow memory unboundedly.
     pending_motion: (i32, i32),
+    /// Microseconds elapsed since entering `MiddlePending` state.
+    pending_elapsed_us: u64,
+    /// Microseconds since last short middle-click release (for double-click detection).
+    /// Set to u64::MAX when not awaiting a second click.
+    since_last_click_us: u64,
+    /// Whether scroll mode was entered via toggle (lock mode).
+    /// When true, MiddleUp in Scrolling does NOT exit — only another click does.
+    toggle_locked: bool,
 }
 
 impl Engine {
@@ -30,6 +38,9 @@ impl Engine {
             detent_accumulator_x: 0.0,
             hires_accumulator_x: 0.0,
             pending_motion: (0, 0),
+            pending_elapsed_us: 0,
+            since_last_click_us: u64::MAX,
+            toggle_locked: false,
         }
     }
 
@@ -76,6 +87,7 @@ impl Engine {
                 self.state = EngineState::MiddlePending;
                 self.reset_offsets_and_accumulators();
                 self.pending_motion = (0, 0);
+                self.pending_elapsed_us = 0;
                 out.push(CoreAction::Suppress);
             }
             CoreInputEvent::MiddleUp => {
@@ -109,22 +121,72 @@ impl Engine {
                     horizontal_units,
                 });
             }
-            CoreInputEvent::Tick { .. } => {}
+            CoreInputEvent::Tick { dt_micros } => {
+                // Track time since last click for double-click window expiry
+                if self.since_last_click_us != u64::MAX {
+                    self.since_last_click_us = self.since_last_click_us.saturating_add(dt_micros);
+                    let window_us = self.config.hold_threshold_ms * 1000;
+                    if self.since_last_click_us > window_us {
+                        // Double-click window expired — emit the deferred click
+                        self.since_last_click_us = u64::MAX;
+                        out.push(CoreAction::EmitMiddleClick);
+                    }
+                }
+            }
         }
     }
 
     fn process_pending(&mut self, event: CoreInputEvent, out: &mut Vec<CoreAction>) {
         match event {
-            CoreInputEvent::MiddleDown | CoreInputEvent::Tick { .. } => {}
-            CoreInputEvent::MiddleUp => {
-                if self.config.replay_pending_motion_on_click {
-                    let (dx, dy) = self.pending_motion;
-                    if dx != 0 || dy != 0 {
-                        out.push(CoreAction::ForwardMotion { dx, dy });
+            CoreInputEvent::MiddleDown => {}
+            CoreInputEvent::Tick { dt_micros } => {
+                self.pending_elapsed_us = self.pending_elapsed_us.saturating_add(dt_micros);
+                // Toggle mode: if held past threshold, enter scroll mode (locked)
+                if self.config.mode == Mode::Toggle && self.config.hold_threshold_ms > 0 {
+                    let threshold_us = self.config.hold_threshold_ms * 1000;
+                    if self.pending_elapsed_us >= threshold_us {
+                        self.state = EngineState::Scrolling;
+                        self.toggle_locked = true;
+                        self.pending_motion = (0, 0);
+                        self.since_last_click_us = u64::MAX;
+                        out.push(CoreAction::EnterScrollMode);
                     }
                 }
-                out.push(CoreAction::EmitMiddleClick);
-                self.reset_to_idle();
+            }
+            CoreInputEvent::MiddleUp => {
+                if self.config.mode == Mode::Toggle && self.config.hold_threshold_ms > 0 {
+                    // Toggle mode with double-click detection
+                    if self.since_last_click_us != u64::MAX {
+                        // This is the SECOND click within the window → enter scroll mode
+                        self.since_last_click_us = u64::MAX;
+                        self.state = EngineState::Scrolling;
+                        self.toggle_locked = true;
+                        self.pending_motion = (0, 0);
+                        out.push(CoreAction::EnterScrollMode);
+                    } else {
+                        // First click — start the double-click window, defer the click
+                        self.since_last_click_us = 0;
+                        self.state = EngineState::Idle;
+                        self.pending_motion = (0, 0);
+                        // Don't emit click yet — wait for window to expire or second click
+                    }
+                } else if self.config.mode == Mode::Toggle {
+                    // Toggle mode with threshold=0: any release enters scroll
+                    self.state = EngineState::Scrolling;
+                    self.toggle_locked = true;
+                    self.pending_motion = (0, 0);
+                    out.push(CoreAction::EnterScrollMode);
+                } else {
+                    // Hold mode: release within deadzone = normal middle click
+                    if self.config.replay_pending_motion_on_click {
+                        let (dx, dy) = self.pending_motion;
+                        if dx != 0 || dy != 0 {
+                            out.push(CoreAction::ForwardMotion { dx, dy });
+                        }
+                    }
+                    out.push(CoreAction::EmitMiddleClick);
+                    self.reset_to_idle();
+                }
             }
             CoreInputEvent::LeftDown => forward_btn(MouseButton::Left, true, out),
             CoreInputEvent::LeftUp => forward_btn(MouseButton::Left, false, out),
@@ -147,7 +209,9 @@ impl Engine {
 
                 if self.crossed_deadzone() {
                     self.state = EngineState::Scrolling;
+                    self.toggle_locked = false;
                     self.pending_motion = (0, 0);
+                    self.since_last_click_us = u64::MAX;
                     out.push(CoreAction::EnterScrollMode);
                 }
             }
@@ -174,15 +238,46 @@ impl Engine {
 
     fn process_scrolling(&mut self, event: CoreInputEvent, out: &mut Vec<CoreAction>) {
         match event {
-            CoreInputEvent::MiddleDown => {}
-            CoreInputEvent::MiddleUp => {
-                self.reset_to_idle();
-                out.push(CoreAction::ExitScrollMode);
+            CoreInputEvent::MiddleDown => {
+                if self.toggle_locked {
+                    // Toggle mode: middle-down while locked = exit scroll mode
+                    self.reset_to_idle();
+                    out.push(CoreAction::ExitScrollMode);
+                }
+                // Hold mode: ignore (waiting for MiddleUp to exit)
             }
-            CoreInputEvent::LeftDown => forward_btn(MouseButton::Left, true, out),
-            CoreInputEvent::LeftUp => forward_btn(MouseButton::Left, false, out),
-            CoreInputEvent::RightDown => forward_btn(MouseButton::Right, true, out),
-            CoreInputEvent::RightUp => forward_btn(MouseButton::Right, false, out),
+            CoreInputEvent::MiddleUp => {
+                if !self.toggle_locked {
+                    // Hold mode or entered via deadzone: release exits
+                    self.reset_to_idle();
+                    out.push(CoreAction::ExitScrollMode);
+                }
+                // Toggle locked: ignore release (stay in scroll mode)
+            }
+            CoreInputEvent::LeftDown | CoreInputEvent::RightDown => {
+                if self.toggle_locked {
+                    // Toggle mode: left/right click exits scroll mode, click consumed
+                    self.reset_to_idle();
+                    out.push(CoreAction::ExitScrollMode);
+                } else {
+                    // Hold mode: forward button presses normally
+                    let button = match event {
+                        CoreInputEvent::LeftDown => MouseButton::Left,
+                        _ => MouseButton::Right,
+                    };
+                    forward_btn(button, true, out);
+                }
+            }
+            CoreInputEvent::LeftUp => {
+                if !self.toggle_locked {
+                    forward_btn(MouseButton::Left, false, out);
+                }
+            }
+            CoreInputEvent::RightUp => {
+                if !self.toggle_locked {
+                    forward_btn(MouseButton::Right, false, out);
+                }
+            }
             CoreInputEvent::Motion { dx, dy } => {
                 self.accumulate_offset(dx, dy);
                 if self.config.suppress_motion_while_scrolling {
@@ -217,6 +312,8 @@ impl Engine {
         self.state = EngineState::Idle;
         self.reset_offsets_and_accumulators();
         self.pending_motion = (0, 0);
+        self.pending_elapsed_us = 0;
+        self.toggle_locked = false;
     }
 
     fn reset_offsets_and_accumulators(&mut self) {

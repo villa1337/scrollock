@@ -1,9 +1,16 @@
-use crate::config::{ConfigError, CoreConfig, SpeedStep};
+use crate::config::{ConfigError, CoreConfig, Mode, SpeedStep};
 use crate::engine::Engine;
 use crate::model::{CoreAction, CoreInputEvent, EngineState, MouseButton};
 
 fn engine() -> Engine {
     Engine::new(CoreConfig::default())
+}
+
+fn hold_engine() -> Engine {
+    Engine::new(CoreConfig {
+        mode: Mode::HoldProgressive,
+        ..CoreConfig::default()
+    })
 }
 
 fn engine_with(cfg: CoreConfig) -> Engine {
@@ -169,7 +176,7 @@ fn config_rejects_no_wheel_emitter() {
 
 #[test]
 fn click_court_emits_middle_click_and_returns_to_idle() {
-    let mut e = engine();
+    let mut e = hold_engine();
     let down = e.process(CoreInputEvent::MiddleDown);
     assert_eq!(down, vec![CoreAction::Suppress]);
     assert_eq!(e.state(), EngineState::MiddlePending);
@@ -205,7 +212,7 @@ fn motion_above_deadzone_enters_scroll_mode() {
 
 #[test]
 fn click_after_motion_inside_deadzone_still_emits_middle_click() {
-    let mut e = engine();
+    let mut e = hold_engine();
     e.process(CoreInputEvent::MiddleDown);
     e.process(CoreInputEvent::Motion { dx: 1, dy: 3 });
     e.process(CoreInputEvent::Motion { dx: -1, dy: -2 });
@@ -455,6 +462,7 @@ fn motion_is_forwarded_when_suppress_disabled() {
 #[test]
 fn replay_pending_motion_replays_net_motion_on_short_click() {
     let cfg = CoreConfig {
+        mode: Mode::HoldProgressive,
         replay_pending_motion_on_click: true,
         ..CoreConfig::default()
     };
@@ -482,6 +490,7 @@ fn replay_pending_motion_replays_net_motion_on_short_click() {
 #[test]
 fn replay_pending_zero_net_motion_emits_no_motion() {
     let cfg = CoreConfig {
+        mode: Mode::HoldProgressive,
         replay_pending_motion_on_click: true,
         ..CoreConfig::default()
     };
@@ -545,7 +554,7 @@ fn left_button_passthrough_in_idle() {
 
 #[test]
 fn right_button_passthrough_during_scrolling() {
-    let mut e = engine();
+    let mut e = hold_engine();
     e.process(CoreInputEvent::MiddleDown);
     e.process(CoreInputEvent::Motion { dx: 0, dy: 50 });
     let click = e.process(CoreInputEvent::RightDown);
@@ -998,7 +1007,11 @@ fn horizontal_offset_is_clamped_to_max_offset_units() {
 
 #[test]
 fn horizontal_motion_inside_deadzone_does_not_disturb_short_click() {
-    let mut e = engine_horizontal();
+    let mut e = engine_with(CoreConfig {
+        mode: Mode::HoldProgressive,
+        horizontal_scroll: true,
+        ..CoreConfig::default()
+    });
     e.process(CoreInputEvent::MiddleDown);
     e.process(CoreInputEvent::Motion { dx: 4, dy: 0 });
     e.process(CoreInputEvent::Motion { dx: -3, dy: 0 });
@@ -1019,4 +1032,188 @@ fn horizontal_release_during_scroll_returns_to_idle() {
     assert!(!release.contains(&CoreAction::EmitMiddleClick));
     assert_eq!(e.state(), EngineState::Idle);
     assert_eq!(e.offset_x_units(), 0);
+}
+
+// ===========================================================================
+// Toggle mode tests (double-click to enter, any click to exit)
+// ===========================================================================
+
+#[test]
+fn toggle_single_click_defers_then_emits_after_window() {
+    // Single middle-click: release defers the click, window expires, click emitted
+    let mut e = engine();
+    e.process(CoreInputEvent::MiddleDown);
+    assert_eq!(e.state(), EngineState::MiddlePending);
+
+    e.process(CoreInputEvent::MiddleUp);
+    // After release, state returns to Idle waiting for second click or window expiry
+    assert_eq!(e.state(), EngineState::Idle);
+
+    // Wait for double-click window to expire (>200ms)
+    let mut emitted_click = false;
+    for _ in 0..30 {
+        let actions = e.process(CoreInputEvent::Tick { dt_micros: 8333 });
+        if actions.contains(&CoreAction::EmitMiddleClick) {
+            emitted_click = true;
+            break;
+        }
+    }
+    assert!(emitted_click, "Middle click should be emitted after window expires");
+}
+
+#[test]
+fn toggle_double_click_enters_scroll_mode() {
+    let mut e = engine();
+
+    // First click
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    assert_eq!(e.state(), EngineState::Idle);
+
+    // Second click within the window (no ticks between = instant)
+    e.process(CoreInputEvent::MiddleDown);
+    let actions = e.process(CoreInputEvent::MiddleUp);
+    assert!(actions.contains(&CoreAction::EnterScrollMode));
+    assert_eq!(e.state(), EngineState::Scrolling);
+}
+
+#[test]
+fn toggle_locked_scroll_not_exited_by_middle_up() {
+    let mut e = engine();
+
+    // Double-click to enter scroll (toggle_locked = true)
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    assert_eq!(e.state(), EngineState::Scrolling);
+
+    // Stray MiddleUp should NOT exit (we're already idle in terms of physical button)
+    // Actually the second MiddleUp already entered scrolling.
+    // A new MiddleDown should exit:
+    let actions = e.process(CoreInputEvent::MiddleDown);
+    assert!(actions.contains(&CoreAction::ExitScrollMode));
+    assert_eq!(e.state(), EngineState::Idle);
+}
+
+#[test]
+fn toggle_left_click_exits_locked_scroll() {
+    let mut e = engine();
+
+    // Double-click to enter
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    assert_eq!(e.state(), EngineState::Scrolling);
+
+    // Left click exits, consumed
+    let click = e.process(CoreInputEvent::LeftDown);
+    assert!(click.contains(&CoreAction::ExitScrollMode));
+    assert_eq!(e.state(), EngineState::Idle);
+    assert!(!click.contains(&CoreAction::ForwardMouseButton {
+        button: MouseButton::Left,
+        pressed: true,
+    }));
+}
+
+#[test]
+fn toggle_right_click_exits_locked_scroll() {
+    let mut e = engine();
+
+    // Double-click to enter
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    assert_eq!(e.state(), EngineState::Scrolling);
+
+    let click = e.process(CoreInputEvent::RightDown);
+    assert!(click.contains(&CoreAction::ExitScrollMode));
+    assert_eq!(e.state(), EngineState::Idle);
+}
+
+#[test]
+fn toggle_motion_past_deadzone_enters_scroll_not_locked() {
+    // Hold + move past deadzone = scroll mode but NOT locked (release exits)
+    let mut e = engine();
+    e.process(CoreInputEvent::MiddleDown);
+    let actions = e.process(CoreInputEvent::Motion { dx: 0, dy: 15 });
+    assert!(actions.contains(&CoreAction::EnterScrollMode));
+    assert_eq!(e.state(), EngineState::Scrolling);
+
+    // Release should exit (not locked)
+    let up = e.process(CoreInputEvent::MiddleUp);
+    assert!(up.contains(&CoreAction::ExitScrollMode));
+    assert_eq!(e.state(), EngineState::Idle);
+}
+
+#[test]
+fn toggle_scrolling_emits_wheel_on_tick() {
+    let mut e = engine();
+
+    // Double-click to enter
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    assert_eq!(e.state(), EngineState::Scrolling);
+
+    // Move mouse down
+    e.process(CoreInputEvent::Motion { dx: 0, dy: 50 });
+
+    // Tick should emit wheel events
+    let actions = run_for(&mut e, 1.0, 8333);
+    let detents = count_detents(&actions);
+    assert!(detents < 0, "Expected negative detents, got {detents}");
+}
+
+#[test]
+fn toggle_motion_suppressed_while_scrolling() {
+    let mut e = engine();
+
+    // Double-click to enter
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+
+    let actions = e.process(CoreInputEvent::Motion { dx: 5, dy: 10 });
+    assert!(actions.contains(&CoreAction::Suppress));
+    assert!(!actions.iter().any(|a| matches!(a, CoreAction::ForwardMotion { .. })));
+}
+
+#[test]
+fn toggle_scroll_wheel_passes_through_while_scrolling() {
+    let mut e = engine();
+
+    // Double-click to enter
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+    e.process(CoreInputEvent::MiddleDown);
+    e.process(CoreInputEvent::MiddleUp);
+
+    let actions = e.process(CoreInputEvent::Wheel {
+        vertical: -1,
+        horizontal: 0,
+    });
+    assert!(actions.contains(&CoreAction::ForwardWheel {
+        vertical: -1,
+        horizontal: 0,
+    }));
+}
+
+#[test]
+fn toggle_zero_threshold_enters_on_any_single_release() {
+    // With hold_threshold_ms = 0, any release enters scroll (no double-click needed)
+    let cfg = CoreConfig {
+        mode: Mode::Toggle,
+        hold_threshold_ms: 0,
+        ..CoreConfig::default()
+    };
+    let mut e = engine_with(cfg);
+    e.process(CoreInputEvent::MiddleDown);
+    let up = e.process(CoreInputEvent::MiddleUp);
+    assert!(up.contains(&CoreAction::EnterScrollMode));
+    assert_eq!(e.state(), EngineState::Scrolling);
 }

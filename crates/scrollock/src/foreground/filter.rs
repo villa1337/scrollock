@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use middle_scroll_core::{CoreInputEvent, EngineState};
+use scrollock_core::{CoreInputEvent, EngineState};
 
 use crate::event_router::RoutedEvent;
 
@@ -202,7 +202,7 @@ impl ForegroundGate {
 mod tests {
     use std::sync::{Arc, Mutex};
 
-    use middle_scroll_core::{CoreInputEvent, EngineState};
+    use scrollock_core::{CoreInputEvent, EngineState};
 
     use super::{
         AutoscrollDecision, ForegroundApp, ForegroundGate, ForegroundProvider, ForegroundSnapshot,

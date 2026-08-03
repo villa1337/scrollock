@@ -39,7 +39,7 @@ impl CommandProvider {
             let shared_bg = shared.clone();
             let refresh = Duration::from_millis(refresh_ms).max(MIN_REFRESH);
             let spawned = thread::Builder::new()
-                .name("wheeltani-fg-command".to_owned())
+                .name("scrollock-fg-command".to_owned())
                 .spawn(move || command_loop(&command, refresh, &shared_bg));
             if let Err(err) = spawned {
                 store(
