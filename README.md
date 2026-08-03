@@ -169,9 +169,12 @@ Physical Mouse → [evdev grab] → Scrollock Engine → [uinput] → Virtual Mo
 
 ## Support
 
-If Scrollock saved you from missing Windows autoscroll, consider buying me a coffee:
+If Scrollock saved you from missing Windows autoscroll, consider supporting the project:
 
-[![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?logo=paypal)](https://paypal.me/villa1337)
+<!-- Add your donation link here when ready -->
+<!-- [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?logo=kofi)](https://ko-fi.com/yourname) -->
+
+⭐ Star the repo if it helped you!
 
 ## License
 
