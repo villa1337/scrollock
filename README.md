@@ -10,7 +10,7 @@ Every Linux-from-Windows switcher asks the same question: *"Where's my middle-cl
 
 The answer used to be "nowhere" — existing solutions are X11-only or require holding the button. Scrollock fixes that:
 
-- **Toggle scroll mode** — double-click middle button or hold it ~140ms to lock. Move to scroll. Click anything to exit.
+- **Toggle scroll mode** — double-click middle button or hold it ~155ms to lock. Move to scroll. Click anything to exit.
 - **Normal middle-click preserved** — quick clicks still close tabs, open links in new tabs, paste.
 - **System-wide** — works in every app (browsers, file managers, terminals, IDEs).
 - **Wayland-native** — evdev/uinput at kernel level. No X11 dependency.
@@ -39,7 +39,7 @@ This builds from source, sets up permissions, detects your mouse, and starts the
 |--------|--------|
 | Quick middle-click | Normal click (close tab, paste, open in new tab) |
 | Double middle-click | **Enter scroll mode** (locked) |
-| Hold middle button ~140ms | **Enter scroll mode** (locked) |
+| Hold middle button ~155ms | **Enter scroll mode** (locked) |
 | Hold + move past deadzone | Scroll while holding (classic behavior) |
 | Move mouse while in scroll mode | Page scrolls (speed follows distance) |
 | Any click while in scroll mode | **Exit scroll mode** |

@@ -63,7 +63,7 @@ impl Default for CoreConfig {
         Self {
             mode: Mode::default(),
 
-            hold_threshold_ms: 200,
+            hold_threshold_ms: 155,
 
             deadzone_units: 10,
             full_speed_units: 120,
