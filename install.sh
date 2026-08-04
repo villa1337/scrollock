@@ -166,7 +166,7 @@ scrollock --setup --install-udev-rule 2>/dev/null || scrollock --setup 2>/dev/nu
     mkdir -p "$CONFIG_DIR"
     cat > "$CONFIG_DIR/config.toml" << 'CONFIG_EOF'
 mode = "toggle"
-hold_threshold_ms = 155
+hold_threshold_ms = 200
 CONFIG_EOF
     warn "Auto-detection failed. Edit ~/.config/scrollock/config.toml to add your mouse."
     warn "Run 'scrollock --list-devices' to find your mouse, then add [device_match] section."
@@ -175,7 +175,7 @@ CONFIG_EOF
 # Ensure toggle mode is set in config
 CONFIG_FILE="$HOME/.config/scrollock/config.toml"
 if [[ -f "$CONFIG_FILE" ]] && ! grep -q "^mode" "$CONFIG_FILE"; then
-    sed -i '1i mode = "toggle"\nhold_threshold_ms = 155\n' "$CONFIG_FILE"
+    sed -i '1i mode = "toggle"\nhold_threshold_ms = 200\n' "$CONFIG_FILE"
 fi
 
 info "Config saved to ~/.config/scrollock/config.toml"
@@ -191,7 +191,7 @@ echo -e "${BOLD}${GREEN}✓ Scrollock installed successfully!${NC}"
 echo ""
 echo "  Usage:"
 echo "    • Double middle-click → enter scroll mode (locked)"
-echo "    • Hold middle button ~155ms → enter scroll mode (locked)"
+echo "    • Hold middle button ~200ms → enter scroll mode (locked)"
 echo "    • Move mouse to scroll (speed follows distance)"
 echo "    • Any click → exit scroll mode"
 echo ""

@@ -10,7 +10,7 @@ Every Linux-from-Windows switcher asks the same question: *"Where's my middle-cl
 
 The answer used to be "nowhere" — existing solutions are X11-only or require holding the button. Scrollock fixes that:
 
-- **Toggle scroll mode** — double-click middle button or hold it ~155ms to lock. Move to scroll. Click anything to exit.
+- **Toggle scroll mode** — double-click middle button or hold it ~200ms to lock. Move to scroll. Click anything to exit.
 - **Normal middle-click preserved** — quick clicks still close tabs, open links in new tabs, paste.
 - **System-wide** — works in every app (browsers, file managers, terminals, IDEs).
 - **Wayland-native** — evdev/uinput at kernel level. No X11 dependency.
@@ -18,7 +18,9 @@ The answer used to be "nowhere" — existing solutions are X11-only or require h
 
 ## Install
 
-One command:
+### Quick Install (one command)
+
+If you already have Rust installed:
 
 ```bash
 curl -sSf https://raw.githubusercontent.com/villa1337/scrollock/main/install.sh | bash
@@ -26,11 +28,62 @@ curl -sSf https://raw.githubusercontent.com/villa1337/scrollock/main/install.sh 
 
 This builds from source, sets up permissions, detects your mouse, and starts the service. **No relogin required.**
 
+### From Scratch (fresh system)
+
+If you're starting from a clean Linux install, here's everything you need:
+
+**1. Install Rust:**
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Follow the prompts (default options are fine). Then load it into your current shell:
+
+```bash
+source "$HOME/.cargo/env"
+```
+
+**2. Install system dependencies:**
+
+Fedora/RHEL:
+```bash
+sudo dnf install gcc python3 gtk4
+```
+
+Ubuntu/Debian:
+```bash
+sudo apt install build-essential python3 libgtk-4-1
+```
+
+Arch/Manjaro:
+```bash
+sudo pacman -S base-devel python gtk4
+```
+
+**3. Install Scrollock:**
+
+```bash
+curl -sSf https://raw.githubusercontent.com/villa1337/scrollock/main/install.sh | bash
+```
+
+The installer will:
+- Build and install the `scrollock` binary
+- Install a visual overlay indicator (GTK4)
+- Set up udev rules for device access (will ask for sudo)
+- Add your user to the `input` group
+- Detect your mouse interactively
+- Create a config at `~/.config/scrollock/config.toml`
+- Install and start a systemd user service
+
+**4. You're done!** Try double-clicking your middle mouse button.
+
 ### Requirements
 
 - Linux with Wayland (GNOME, Hyprland, Sway, KDE Plasma)
-- Rust toolchain (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
+- Rust toolchain (see step 1 above)
 - systemd (for the user service)
+- Python 3 + GTK4 (for the visual indicator — scroll works without it)
 - A mouse with a middle button
 
 ## How It Works
@@ -39,14 +92,14 @@ This builds from source, sets up permissions, detects your mouse, and starts the
 |--------|--------|
 | Quick middle-click | Normal click (close tab, paste, open in new tab) |
 | Double middle-click | **Enter scroll mode** (locked) |
-| Hold middle button ~155ms | **Enter scroll mode** (locked) |
+| Hold middle button ~200ms | **Enter scroll mode** (locked) |
 | Hold + move past deadzone | Scroll while holding (classic behavior) |
 | Move mouse while in scroll mode | Page scrolls (speed follows distance) |
 | Any click while in scroll mode | **Exit scroll mode** |
 
 Three ways to enter scroll mode, all natural:
 1. **Double-click** — fast tap-tap on the middle button
-2. **Hold** — press and hold for a beat (140ms)
+2. **Hold** — press and hold for a beat (~200ms)
 3. **Hold + move** — press and drag past the deadzone (instant, like classic autoscroll)
 
 ## Configuration
@@ -59,7 +112,7 @@ mode = "toggle"
 
 # Time window for double-click detection and hold threshold (ms)
 # Lower = snappier single-clicks but tighter double-click window
-hold_threshold_ms = 140
+hold_threshold_ms = 200
 
 # Pixels of movement before scroll activates (when holding)
 deadzone_units = 10
