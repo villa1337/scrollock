@@ -66,12 +66,12 @@ impl Default for CoreConfig {
             hold_threshold_ms: 200,
 
             deadzone_units: 10,
-            full_speed_units: 120,
+            full_speed_units: 180,
             max_offset_units: 240,
 
-            min_speed_detents_per_second: 1.5,
+            min_speed_detents_per_second: 0.5,
             max_speed_detents_per_second: 32.0,
-            acceleration_exponent: 1.6,
+            acceleration_exponent: 2.2,
             // Empty by default: scrolling follows the smooth progressive curve
             // (min/max speed, full_speed_units, acceleration_exponent).
             // Configs that define `[[scroll_speed_steps]]` keep the stepped
@@ -89,7 +89,7 @@ impl Default for CoreConfig {
 
             emit_hires_wheel: true,
             emit_legacy_wheel: true,
-            min_hires_units_per_event: 15,
+            min_hires_units_per_event: 1,
 
             horizontal_scroll: true,
             max_detents_per_tick: 4,

@@ -167,6 +167,10 @@ scrollock --setup --install-udev-rule 2>/dev/null || scrollock --setup 2>/dev/nu
     cat > "$CONFIG_DIR/config.toml" << 'CONFIG_EOF'
 mode = "toggle"
 hold_threshold_ms = 200
+min_speed_detents_per_second = 0.5
+full_speed_units = 180
+acceleration_exponent = 2.2
+min_hires_units_per_event = 1
 CONFIG_EOF
     warn "Auto-detection failed. Edit ~/.config/scrollock/config.toml to add your mouse."
     warn "Run 'scrollock --list-devices' to find your mouse, then add [device_match] section."
@@ -175,7 +179,7 @@ CONFIG_EOF
 # Ensure toggle mode is set in config
 CONFIG_FILE="$HOME/.config/scrollock/config.toml"
 if [[ -f "$CONFIG_FILE" ]] && ! grep -q "^mode" "$CONFIG_FILE"; then
-    sed -i '1i mode = "toggle"\nhold_threshold_ms = 200\n' "$CONFIG_FILE"
+    sed -i '1i mode = "toggle"\nhold_threshold_ms = 200\nmin_speed_detents_per_second = 0.5\nfull_speed_units = 180\nacceleration_exponent = 2.2\nmin_hires_units_per_event = 1\n' "$CONFIG_FILE"
 fi
 
 info "Config saved to ~/.config/scrollock/config.toml"
